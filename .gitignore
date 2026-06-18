@@ -191,3 +191,4 @@ pyrightconfig.json
 
 ### Specific to nmap_parser ###
 results/*
+settings/network.txt
