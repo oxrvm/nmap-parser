@@ -12,11 +12,11 @@ def export_to_mysql(nmap_scan_informations, nmap_hosts):
 
 def connect_to_database():
     conn = mysql.connector.connect(
-        host=os.getenv('MYSQL_HOST'),
+        host=os.getenv('NMAP_DB_HOST'),
         port=3306,
-        user=os.getenv('MYSQL_USER'),
-        password=os.getenv('MYSQL_PASSWORD'),
-        database=os.getenv('MYSQL_DATABASE')
+        user=os.getenv('NMAP_DB_USER'),
+        password=os.getenv('NMAP_DB_PASSWORD'),
+        database=os.getenv('NMAP_DB_DATABASE')
     )
 
     return conn

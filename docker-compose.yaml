@@ -1,30 +1,83 @@
+x-mariadb-common: &mariadb-common
+  healthcheck: &mariadb-common-healthcheck
+    test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+    start_period: 10s
+    interval: 10s
+    timeout: 5s
+    retries: 3
+
 services:
-  nmap-mariadb:
-    container_name: nmap-mariadb
-    image: mariadb:latest
-    healthcheck:
-      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
-      start_period: 10s
-      interval: 10s
-      timeout: 5s
-      retries: 3
+  # MariaDB Database for nmap-parser
+  nmap-db:
+    container_name: nmap-db
     environment:
       MARIADB_RANDOM_ROOT_PASSWORD: "true"
-      MARIADB_USER: ${MYSQL_USER}
-      MARIADB_PASSWORD: ${MYSQL_PASSWORD}
-      MARIADB_DATABASE: ${MYSQL_DATABASE}
+      MARIADB_USER: ${NMAP_DB_USER:-nmap}
+      MARIADB_PASSWORD: ${NMAP_DB_PASSWORD:-nmap}
+      MARIADB_DATABASE: ${NMAP_DB_DATABASE:-nmap}
+    healthcheck:
+      <<: *mariadb-common-healthcheck
+    image: mariadb:10.11
+    networks:
+      - nmap-net
     ports:
       - "3306:3306"
     restart: "unless-stopped"
+    volumes:
+      - nmap-data:/var/lib/mysql
 
   nmap-parser:
     container_name: nmap-parser
-    build: .
-    environment:
-      MARIADB_HOST: nmap-mariadb
-      MARIADB_USER: ${MYSQL_USER}
-      MARIADB_PASSWORD: ${MYSQL_PASSWORD}
-      MARIADB_DATABASE: ${MYSQL_DATABASE}
+    build: ${NMAP_PROJ_DIR:-.}
     depends_on:
-      nmap-mariadb:
+      nmap-db:
         condition: "service_healthy"
+    environment:
+      NMAP_DB_HOST: nmap-db
+      NMAP_DB_USER: ${NMAP_DB_USER:-nmap}
+      NMAP_DB_PASSWORD: ${NMAP_DB_PASSWORD:-nmap}
+      NMAP_DB_DATABASE: ${NMAP_DB_DATABASE:-nmap}
+    networks:
+      - nmap-net
+
+  # MariaDB Database for phpmyadmin-server
+  phpmyadmin-db:
+    container_name: phpmyadmin-db
+    environment:
+      MARIADB_RANDOM_ROOT_PASSWORD: "true"
+      MARIADB_USER: ${PHPMYADMIN_DB_USER:-phpmyadmin}
+      MARIADB_PASSWORD: ${PHPMYADMIN_DB_PASSWORD:-phpmyadmin}
+      MARIADB_DATABASE: ${PHPMYADMIN_DB_DATABASE:-phpmyadmin}
+    healthcheck:
+      <<: *mariadb-common-healthcheck
+    image: mariadb:10.11
+    networks:
+      - phpmyadmin-net
+    restart: "unless-stopped"
+    volumes:
+      - phpmyadmin-data:/var/lib/mysql
+
+  phpmyadmin-server:
+    container_name: phpmyadmin-server
+    image: phpmyadmin
+    depends_on:
+      phpmyadmin-db:
+        condition: "service_healthy"
+    environment:
+      - PMA_HOST=phpmyadmin-db
+    networks:
+      - nmap-net
+      - phpmyadmin-net
+    ports:
+      - "8080:80"
+    restart: "unless-stopped"
+    volumes:
+      - ${PHPMYADMIN_PROJ_DIR:-./settings/config.user.inc.php}:/etc/phpmyadmin/config.user.inc.php:ro
+
+networks:
+  nmap-net:
+  phpmyadmin-net:
+
+volumes:
+  nmap-data:
+  phpmyadmin-data:
