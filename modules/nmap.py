@@ -10,7 +10,8 @@ def start_nmap_scan(nmap_network_file, nmap_results_file):
             '-p-',
             '-sV',
             '-oX',
-            f'{nmap_results_file}'
+            f'{nmap_results_file}',
+            '-v'
         ],
         stdout=subprocess.DEVNULL
     )
